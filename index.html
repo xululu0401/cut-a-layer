@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>这一层能不能砍</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif; background: #f5f3ef; color: #2a2724; line-height: 1.6; }
+  .wrap { max-width: 1040px; margin: 0 auto; padding: 20px 16px 40px; }
+  h1 { font-size: 26px; letter-spacing: 1px; }
+  .lead { color: #6a625a; font-size: 14px; margin: 4px 0 14px; }
+  .card { background: #fff; border-radius: 10px; padding: 14px; border: 1px solid #e3ddd4; min-width: 0; margin-bottom: 14px; }
+  .card h2 { font-size: 15px; color: #6a625a; font-weight: 600; margin-bottom: 8px; }
+  .inputs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+  @media (max-width: 640px) { .inputs { grid-template-columns: minmax(0, 1fr); } }
+  label.f { display: block; font-size: 13px; color: #4f4842; }
+  label.f input { display: block; width: 100%; margin-top: 3px; padding: 6px 8px; font-size: 16px; border: 1px solid #d3cbc0; border-radius: 6px; background: #fffdfa; }
+  input.bad { border-color: #b3402e !important; background: #fff3ef !important; }
+  .layers { margin-top: 12px; }
+  .layers .lh { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 13px; color: #4f4842; margin-bottom: 6px; }
+  .lrow { display: grid; grid-template-columns: 7.5em minmax(0, 1fr) auto; gap: 8px; align-items: center; margin-bottom: 5px; font-size: 14px; }
+  .lrow input { width: 100%; padding: 5px 8px; font-size: 16px; border: 1px solid #d3cbc0; border-radius: 6px; background: #fffdfa; }
+  .lrow .nm { color: #6a625a; overflow-wrap: anywhere; }
+  button { font: inherit; font-size: 13px; padding: 6px 11px; border-radius: 6px; border: 1px solid #7a4b2a; background: #7a4b2a; color: #fff; cursor: pointer; }
+  button.ghost { background: #fff; color: #7a4b2a; }
+  button.x { padding: 3px 8px; }
+  .presets { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
+  #error { display: none; background: #fff3ef; border: 1px solid #e3b4a6; color: #8f2f1d; border-radius: 8px; padding: 10px 12px; margin-bottom: 14px; overflow-wrap: anywhere; }
+  #summary { font-size: 19px; font-weight: 700; overflow-wrap: anywhere; }
+  #summary.warn { color: #9a3b1c; } #summary.good { color: #2f6a45; }
+  #facts { margin: 8px 0 0 18px; font-size: 14px; color: #4f4842; } #facts li { margin: 2px 0; overflow-wrap: anywhere; }
+  .two { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px; }
+  @media (max-width: 800px) { .two { grid-template-columns: minmax(0, 1fr); } }
+  .pyr h3 { font-size: 13px; color: #6a625a; font-weight: 600; margin-bottom: 6px; text-align: center; }
+  .bar { display: flex; align-items: center; justify-content: center; margin: 3px auto; height: 26px; border-radius: 4px; font-size: 12px; color: #fff; white-space: nowrap; min-width: 2.6em; max-width: 100%; }
+  .bar.cur { background: #a8774f; } .bar.over { background: #b3402e; } .bar.cutok { background: #d8b48c; color: #3d2a1a; outline: 2px dashed #7a4b2a; outline-offset: 1px; }
+  .bar.best { background: #5f8a6c; }
+  .bar.base { background: #ece6dd; color: #6a625a; }
+  .tblwrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 640px; }
+  th, td { padding: 6px 5px; border-top: 1px solid #eee7dd; text-align: right; }
+  th:first-child, td:first-child, th:nth-child(7), th:nth-child(8) { text-align: left; }
+  td:nth-child(7) { min-width: 15em; }
+  thead th { color: #6a625a; font-weight: 600; border-top: none; font-size: 12px; }
+  td.v-over { color: #b3402e; font-weight: 700; } td.v-cut { color: #2f6a45; font-weight: 600; } td.v-no { color: #9a928a; }
+  td.wrapc { text-align: left; white-space: normal; }
+  #rx { list-style: none; } #rx li { display: flex; gap: 10px; align-items: flex-start; justify-content: space-between; padding: 8px 0; border-top: 1px solid #eee7dd; font-size: 14px; }
+  #rx li:first-child { border-top: none; } #rx li span { overflow-wrap: anywhere; min-width: 0; }
+  #rx li button { flex: none; }
+  .note { font-size: 12px; color: #857c73; margin-top: 8px; }
+  .dl { display: flex; gap: 6px; flex-wrap: wrap; }
+  .rules { font-size: 13px; color: #4f4842; } .rules p { margin: 4px 0; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>这一层能不能砍</h1>
+  <p class="lead">填一线有多少人、每个主管最多带几个、现在每层几个管理者。它逐层体检：哪层砍掉后上面的人还带得过来、按上限最少要几层几个人、上限提到多少就能少一层。</p>
+
+  <div class="card">
+    <h2>条件</h2>
+    <div class="inputs">
+      <label class="f">一线员工人数<input id="N" inputmode="numeric"></label>
+      <label class="f">一线主管每人最多带几个员工<input id="a" inputmode="numeric"></label>
+      <label class="f">往上每人最多带几个下级管理者<input id="b" inputmode="numeric"></label>
+    </div>
+    <div class="layers">
+      <div class="lh"><span>现在每层几个管理者（从下往上，最上面一层是 1 个人）</span><span><button class="ghost x" id="addLayer">＋ 加一层</button></span></div>
+      <div id="layerRows"></div>
+    </div>
+    <div class="presets" id="presets"></div>
+  </div>
+
+  <div id="error"></div>
+
+  <div id="out">
+  <div class="card">
+    <div id="summary"></div>
+    <ul id="facts"></ul>
+  </div>
+
+  <div class="two">
+    <div class="card pyr"><h3>现在</h3><div id="pyrCur"></div></div>
+    <div class="card pyr"><h3>按上限最省</h3><div id="pyrBest"></div></div>
+  </div>
+  <p class="note" style="margin:-6px 0 14px">条宽按人数开方缩放，只看相对多少。红色＝这层有人带的超上限；虚线框＝这层可以直接砍。</p>
+
+  <div class="card">
+    <h2>每层体检（从上往下）</h2>
+    <div class="tblwrap"><table id="checkup"><thead><tr></tr></thead><tbody></tbody></table></div>
+    <p class="note">「最多一人带」＝把下一层尽量平均分下去后，带得最多那个人带几个。「砍掉它行不行」＝这层整层撤掉、它要带的人全部交给上一层，上一层每人最多带几个，是否还在上限内。</p>
+  </div>
+
+  <div class="card">
+    <h2>改法（点「照这样改」直接改上面的条件）</h2>
+    <ul id="rx"></ul>
+  </div>
+  </div>
+
+  <div class="card">
+    <h2>导出与保存</h2>
+    <div class="dl">
+      <button id="dlPNG">结果卡 PNG</button>
+      <button class="ghost" id="dlCSV">CSV</button>
+      <button class="ghost" id="dlMD">Markdown</button>
+      <button class="ghost" id="dlJSON">JSON 备份</button>
+      <button class="ghost" id="reset">恢复默认例子</button>
+    </div>
+    <p class="note">条件自动保存在这台设备的浏览器里，刷新后还在；不上传任何数据。</p>
+  </div>
+
+  <div class="card rules">
+    <h2>怎么算的、算不了什么</h2>
+    <p>每层最少几人 ＝ 它要带的下一层人数 ÷ 带人上限，向上取整。从一线往上一层层取最少，直到剩 1 个人，这就是「按上限最省」：总人数和层数同时最少（小规模已用暴力枚举核对）。</p>
+    <p>只按人数和带人上限算，默认谁都能分给谁。真实组织里有业务线、地域、专业的边界，不能随便合并，真实下限会比这里高；这里给的是「人数上的下限」。</p>
+    <p>带人上限是你自己定的设计选择，不是行业标准。默认例子是虚构的，不对应任何公司。本工具不评价任何岗位或个人该不该留。</p>
+  </div>
+</div>
+
+  <script>
+/* 这一层能不能砍 · 计算层（纯函数，Node 与浏览器共用）
+ * 模型：N 个一线员工；一线主管每人最多直接带 a 个员工；再往上每位管理者最多直接带 b 个下级管理者；最顶上 1 个人。
+ * 假设：任何人都可以分给任何上级（不考虑业务分组、地域、专业边界），所以算出来的是「人数上的下限」。 */
+(function (root) {
+  'use strict';
+  const LIM = { N: [1, 1000000], a: [1, 1000], b: [2, 1000], layers: 24 };
+
+  function fail(msg, field) { const e = new Error(msg); e.field = field; throw e; }
+  function int(v, name, field, lo, hi) {
+    const s = typeof v === 'number' ? String(v) : String(v == null ? '' : v).trim();
+    if (s === '') fail(name + '没填', field);
+    if (!/^-?\d+$/.test(s)) fail(name + '要填整数（现在是「' + s.slice(0, 20) + '」）', field);
+    const n = Number(s);
+    if (n < lo || n > hi) fail(name + '要在 ' + lo + '～' + hi.toLocaleString('en-US') + ' 之间（现在是 ' + s.slice(0, 20) + '）', field);
+    return n;
+  }
+
+  function readInput(inp) {
+    const N = int(inp.N, '一线员工人数', 'N', LIM.N[0], LIM.N[1]);
+    const a = int(inp.a, '一线主管最多带几人', 'a', LIM.a[0], LIM.a[1]);
+    const b = int(inp.b, '往上每人最多带几个下级管理者', 'b', LIM.b[0], LIM.b[1]);
+    const raw = Array.isArray(inp.layers) ? inp.layers : [];
+    if (raw.length < 1) fail('现在的管理层至少要有 1 层（最顶上那个人）', 'layers');
+    if (raw.length > LIM.layers) fail('最多填 ' + LIM.layers + ' 层', 'layers');
+    const layers = raw.map((v, i) => int(v, '第 ' + (i + 1) + ' 层人数', 'L' + i, 1, LIM.N[1]));
+    if (layers[layers.length - 1] !== 1) fail('最顶上一层要是 1 个人（现在填的是 ' + layers[layers.length - 1] + '）；几个合伙人并列的情况本工具不处理', 'L' + (layers.length - 1));
+    return { N, a, b, layers };
+  }
+
+  /* 最省结构：从下往上每层取 ceil(下一层/上限)，直到 1 人。每层都取到了下限，所以总人数和层数同时最少。 */
+  function minimal(N, a, b) {
+    const out = [Math.ceil(N / a)];
+    while (out[out.length - 1] > 1) out.push(Math.ceil(out[out.length - 1] / b));
+    return out;
+  }
+  const depth = (N, a, b) => minimal(N, a, b).length;
+  /* L 层最多能管多少一线员工 */
+  function capacity(L, a, b) { let c = a; for (let i = 1; i < L; i++) c *= b; return c; }
+  const sum = (x) => x.reduce((s, v) => s + v, 0);
+
+  /* 把上限 key（'a' 或 'b'）提到多少就能少一层；做不到返回 null。层数随上限单调不增，用二分。 */
+  function raiseToCut(N, a, b, key) {
+    const L = depth(N, a, b);
+    const f = (v) => (key === 'a' ? depth(N, v, b) : depth(N, a, v));
+    let lo = (key === 'a' ? a : b) + 1, hi = Math.max(lo, key === 'a' ? N : Math.ceil(N / a));
+    if (f(hi) >= L) return null;
+    while (lo < hi) { const m = Math.floor((lo + hi) / 2); if (f(m) < L) hi = m; else lo = m + 1; }
+    return lo;
+  }
+
+  /* 现状体检：每层带的是下一层（第 1 层带一线员工） */
+  function examine(N, a, b, layers) {
+    return layers.map((c, i) => {
+      const below = i === 0 ? N : layers[i - 1];
+      const limit = i === 0 ? a : b;
+      const need = Math.ceil(below / limit);
+      const maxEach = Math.ceil(below / c);
+      const row = { index: i, count: c, below, limit, avg: below / c, maxEach, need, top: i === layers.length - 1 };
+      row.over = maxEach > limit;
+      row.idle = c > below;
+      row.spare = Math.max(0, c - need);
+      if (!row.top) {
+        const upper = layers[i + 1];
+        const upLimit = i === 0 ? a : b;
+        row.cutEach = Math.ceil(below / upper);
+        row.cutLimit = upLimit;
+        row.canCut = row.cutEach <= upLimit;
+      } else { row.cutEach = null; row.canCut = false; }
+      return row;
+    });
+  }
+
+  function layerName(i, L) {
+    if (i === L - 1) return '最顶上';
+    if (i === 0) return '一线主管';
+    return '第 ' + (i + 1) + ' 层';
+  }
+  const fmt = (n) => n.toLocaleString('en-US');
+  const avgText = (x) => (Math.round(x * 10) / 10).toFixed(1).replace(/\.0$/, '');
+
+  function calculate(inp) {
+    const { N, a, b, layers } = readInput(inp);
+    const L = layers.length;
+    const best = minimal(N, a, b);
+    const rows = examine(N, a, b, layers);
+    const over = rows.filter((r) => r.over);
+    const idle = rows.filter((r) => r.idle);
+    const cuts = rows.filter((r) => r.canCut);
+    const cur = sum(layers), min = sum(best);
+    const cap = capacity(best.length, a, b);
+    const r = { input: { N, a, b, layers: layers.slice() }, best, bestTotal: min, total: cur, rows, L, bestL: best.length,
+      extraLayers: L - best.length, extraManagers: cur - min, capacity: cap, toNextLayer: cap - N + 1,
+      raiseA: raiseToCut(N, a, b, 'a'), raiseB: raiseToCut(N, a, b, 'b'), ok: over.length === 0 };
+    r.names = layers.map((_, i) => layerName(i, L));
+
+    /* 结论 */
+    let head;
+    if (over.length) {
+      head = '现在的结构有 ' + over.length + ' 层超出上限（' + over.map((x) => r.names[x.index]).join('、') + '），先补人或提上限，再谈砍层';
+    } else if (cuts.length) {
+      head = cuts.length === 1
+        ? '能砍：' + r.names[cuts[0].index] + '（' + fmt(cuts[0].count) + ' 人），砍掉后它上面那层每人带的人不超上限'
+        : '能砍：' + cuts.map((x) => r.names[x.index]).join('、') + ' 任选一层砍掉，它上面那层每人带的人都不超上限';
+    } else if (r.extraLayers > 0) {
+      head = '单砍哪一层都会超上限，但按最省结构排可以少 ' + r.extraLayers + ' 层';
+    } else {
+      head = '砍不了：' + fmt(N) + ' 个一线员工、这两个上限下最少就要 ' + best.length + ' 层，现在正好';
+    }
+    r.summary = head;
+    r.facts = [
+      '现在 ' + L + ' 层、' + fmt(cur) + ' 个管理岗；按上限最省是 ' + best.length + ' 层、' + fmt(min) + ' 个' + (cur > min ? '，多 ' + fmt(cur - min) + ' 个' : (cur < min ? '（现在比最省还少，说明有层超上限）' : '')),
+      '最省结构从下往上：' + best.map(fmt).join(' → ') + '（每层 = 下一层 ÷ 上限，向上取整）',
+      best.length + ' 层最多管 ' + fmt(cap) + ' 个一线员工；再多 ' + fmt(r.toNextLayer) + ' 人就要加一层'
+    ];
+    if (idle.length) r.facts.push(idle.map((x) => r.names[x.index]).join('、') + ' 的人数比它要带的下一层还多，有人没人可带');
+
+    /* 改法：每条都能一键作用到输入 */
+    const sug = [];
+    over.forEach((x) => {
+      if (x.top) {
+        /* 最顶上只能 1 人：带不过来就在它下面加一层 */
+        const add = Math.ceil(x.below / b);
+        const nl = layers.slice(); nl.splice(x.index, 0, add);
+        sug.push({ kind: 'fix', text: '最顶上 1 人要直接带 ' + fmt(x.below) + ' 个，超上限 ' + b + '：在它下面加一层 ' + fmt(add) + ' 人', apply: { layers: nl } });
+        return;
+      }
+      const nl = layers.slice(); nl[x.index] = x.need;
+      sug.push({ kind: 'fix', text: r.names[x.index] + '补到至少 ' + fmt(x.need) + ' 人（现在 ' + fmt(x.count) + ' 人要带 ' + fmt(x.below) + '，有人得带 ' + fmt(x.maxEach) + ' 个，上限 ' + x.limit + '）', apply: { layers: nl } });
+    });
+    if (!over.length) cuts.forEach((x) => {
+      const nl = layers.slice(); nl.splice(x.index, 1);
+      sug.push({ kind: 'cut', text: '砍掉' + r.names[x.index] + '（' + fmt(x.count) + ' 人）：' + (x.index + 1 < L - 1 ? r.names[x.index + 1] : '最顶上') + '每人最多带 ' + x.cutEach + ' 个，上限 ' + x.cutLimit, apply: { layers: nl } });
+    });
+    if (cur !== min || L !== best.length) {
+      sug.push({ kind: 'best', text: '照最省结构重排：' + best.length + ' 层 ' + fmt(min) + ' 人（' + best.slice().reverse().map(fmt).join(' / ') + '，从上往下）', apply: { layers: best.slice() } });
+    }
+    if (r.raiseB) sug.push({ kind: 'b', text: '中层每人能带的下级从 ' + b + ' 提到 ' + r.raiseB + '，最省结构就少一层（' + minimal(N, a, r.raiseB).length + ' 层 ' + fmt(sum(minimal(N, a, r.raiseB))) + ' 人）', apply: { b: r.raiseB, layers: minimal(N, a, r.raiseB) } });
+    if (r.raiseA) sug.push({ kind: 'a', text: '一线主管每人能带的员工从 ' + a + ' 提到 ' + r.raiseA + '，最省结构就少一层（' + minimal(N, r.raiseA, b).length + ' 层 ' + fmt(sum(minimal(N, r.raiseA, b))) + ' 人）', apply: { a: r.raiseA, layers: minimal(N, r.raiseA, b) } });
+    r.suggestions = sug;
+    return r;
+  }
+
+  function tableRows(r) {
+    return r.rows.slice().reverse().map((x) => [
+      r.names[x.index], fmt(x.count), fmt(x.below), avgText(x.avg), fmt(x.maxEach) + ' / ' + fmt(x.limit),
+      fmt(x.need), x.top ? '—' : (x.canCut ? '能（上一层每人带 ' + x.cutEach + '）' : '不能（上一层每人要带 ' + x.cutEach + '，超 ' + x.cutLimit + '）'),
+      x.over ? '超上限' : (x.idle ? '有人空挂' : (x.spare ? '可少 ' + fmt(x.spare) + ' 人' : '刚好'))
+    ]);
+  }
+  const HEAD = ['哪一层', '人数', '要带', '平均每人带', '最多一人带 / 上限', '这层最少几人', '砍掉它行不行', '体检'];
+
+  function csvCell(s) { s = String(s); return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; }
+  function toCSV(r, stamp) {
+    const L = [];
+    const row = (a) => L.push(a.map(csvCell).join(','));
+    row(['项目', '这一层能不能砍']); row(['生成时间', stamp]);
+    row(['一线员工', r.input.N]); row(['一线主管最多带', r.input.a]); row(['往上每人最多带', r.input.b]);
+    row(['结论', r.summary]); r.facts.forEach((f) => row(['', f])); L.push('');
+    row(HEAD); tableRows(r).forEach(row); L.push('');
+    row(['最省结构（从下往上）'].concat(r.best)); L.push('');
+    row(['改法']); r.suggestions.forEach((s) => row(['', s.text]));
+    return L.join('\n') + '\n';
+  }
+  function toMD(r, stamp) {
+    const L = ['# 这一层能不能砍', '', '生成时间：' + stamp, '',
+      '一线员工 ' + fmt(r.input.N) + ' 人；一线主管每人最多带 ' + r.input.a + ' 人；往上每人最多带 ' + r.input.b + ' 个下级管理者。', '',
+      '**结论**：' + r.summary, ''];
+    r.facts.forEach((f) => L.push('- ' + f));
+    L.push('', '## 每层体检（从上往下）', '', '| ' + HEAD.join(' | ') + ' |', '|' + HEAD.map(() => '---').join('|') + '|');
+    tableRows(r).forEach((x) => L.push('| ' + x.join(' | ') + ' |'));
+    L.push('', '## 改法', '');
+    if (!r.suggestions.length) L.push('- 没有能直接少一层的改法');
+    r.suggestions.forEach((s) => L.push('- ' + s.text));
+    L.push('', '## 边界', '', '- 只按人数和带人上限算，默认谁都能分给谁；有业务分组、地域、专业边界时，真实下限会更高。',
+      '- 带人上限是你自己填的设计选择，不是行业标准；本工具不评价任何公司或岗位。');
+    return L.join('\n') + '\n';
+  }
+
+  const API = { LIM, readInput, minimal, depth, capacity, raiseToCut, examine, calculate, tableRows, HEAD, toCSV, toMD, fmt, avgText, sum };
+  if (typeof module !== 'undefined' && module.exports) module.exports = API;
+  root.AppCore = API;
+})(typeof window !== 'undefined' ? window : globalThis);
+
+  </script>
+  <script>
+/* 这一层能不能砍 · 界面层 */
+(function () {
+  'use strict';
+  const C = window.AppCore;
+  const KEY = 'cut-a-layer:v1';
+  const DEFAULT = { N: 380, a: 8, b: 6, layers: [52, 14, 6, 2, 1] };
+  const PRESETS = [
+    ['默认：380 人五层', DEFAULT],
+    ['主管太少（超上限）', { N: 380, a: 8, b: 6, layers: [40, 8, 2, 1] }],
+    ['已经最省', { N: 380, a: 8, b: 6, layers: [48, 8, 2, 1] }],
+    ['每层都挤', { N: 380, a: 8, b: 6, layers: [48, 14, 7, 2, 1] }],
+    ['小团队 30 人', { N: 30, a: 7, b: 5, layers: [6, 2, 1] }]
+  ];
+  const $ = (id) => document.getElementById(id);
+  let state = clone(DEFAULT);
+  let last = null;
+  function clone(o) { return { N: o.N, a: o.a, b: o.b, layers: o.layers.slice() }; }
+  const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+  function layerLabel(i, L) { return i === L - 1 ? '最顶上' : (i === 0 ? '一线主管' : '第 ' + (i + 1) + ' 层'); }
+  function buildLayerRows() {
+    const box = $('layerRows'); box.innerHTML = '';
+    const L = state.layers.length;
+    /* 从上往下显示，和组织图一致 */
+    for (let i = L - 1; i >= 0; i--) {
+      const d = document.createElement('div'); d.className = 'lrow';
+      d.innerHTML = '<span class="nm">' + layerLabel(i, L) + '</span><input id="L' + i + '" inputmode="numeric" aria-label="' + layerLabel(i, L) + '人数"><button class="ghost x" data-del="' + i + '" title="删掉这层">删</button>';
+      const inp = d.querySelector('input'); inp.value = state.layers[i];
+      inp.addEventListener('input', () => { state.layers[i] = inp.value.trim(); run(); });
+      const del = d.querySelector('button');
+      if (L <= 1) del.disabled = true;
+      del.addEventListener('click', () => { if (state.layers.length <= 1) return; state.layers.splice(i, 1); buildLayerRows(); run(); });
+      box.appendChild(d);
+    }
+  }
+  function writeInputs() { $('N').value = state.N; $('a').value = state.a; $('b').value = state.b; buildLayerRows(); }
+
+  function save() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) { /* 隐私模式忽略 */ } }
+  function load() {
+    try {
+      const o = JSON.parse(localStorage.getItem(KEY) || 'null');
+      if (o && Array.isArray(o.layers) && o.layers.length >= 1 && o.layers.length <= C.LIM.layers) {
+        C.readInput(o); return clone(o);
+      }
+    } catch (e) { /* 坏存档：回默认 */ }
+    return null;
+  }
+
+  /* counts = 各管理层（下→上）+ 一线人数放最后；显示顺序：最顶上在最上，一线在最下 */
+  function pyramid(el, counts, cls) {
+    const max = Math.max.apply(null, counts.concat([1]));
+    const n = counts.length - 1;
+    const order = []; for (let i = n - 1; i >= 0; i--) order.push(i); order.push(n);
+    el.innerHTML = order.map((i) => {
+      const c = counts[i];
+      const cl = cls(i);
+      const w = Math.max(6, Math.sqrt(c / max) * 100);
+      return '<div class="bar ' + cl + '" style="width:' + w.toFixed(1) + '%">' + C.fmt(c) + '</div>';
+    }).join('');
+  }
+
+  function render(r) {
+    const s = $('summary'); s.textContent = r.summary;
+    s.className = r.ok ? (r.extraLayers > 0 || r.rows.some((x) => x.canCut) ? 'good' : '') : 'warn';
+    $('facts').innerHTML = r.facts.map((f) => '<li>' + esc(f) + '</li>').join('');
+    pyramid($('pyrCur'), r.input.layers.concat([r.input.N]), (i) => (i === r.L ? 'base' : (r.rows[i].over ? 'over' : (r.rows[i].canCut && r.ok ? 'cutok' : 'cur'))));
+    pyramid($('pyrBest'), r.best.concat([r.input.N]), (i) => (i === r.bestL ? 'base' : 'best'));
+    $('pyrCur').lastElementChild.textContent = '一线 ' + C.fmt(r.input.N);
+    $('pyrBest').lastElementChild.textContent = '一线 ' + C.fmt(r.input.N);
+    $('pyrCur').insertAdjacentHTML('beforeend', '<p class="note" style="text-align:center">' + r.L + ' 层 · ' + C.fmt(r.total) + ' 个管理岗</p>');
+    $('pyrBest').insertAdjacentHTML('beforeend', '<p class="note" style="text-align:center">' + r.bestL + ' 层 · ' + C.fmt(r.bestTotal) + ' 个管理岗</p>');
+
+    const th = $('checkup').querySelector('thead tr'); th.innerHTML = C.HEAD.map((h) => '<th>' + h + '</th>').join('');
+    const rows = C.tableRows(r);
+    const meta = r.rows.slice().reverse();
+    $('checkup').querySelector('tbody').innerHTML = rows.map((x, k) => {
+      const m = meta[k];
+      return '<tr>' + x.map((v, j) => {
+        let c = '';
+        if (j === 4 && m.over) c = 'v-over';
+        if (j === 6) c = 'wrapc ' + (m.top ? 'v-no' : (m.canCut ? 'v-cut' : 'v-no'));
+        if (j === 7) c = 'wrapc ' + (m.over ? 'v-over' : '');
+        return '<td class="' + c + '">' + esc(v) + '</td>';
+      }).join('') + '</tr>';
+    }).join('');
+
+    const rx = $('rx'); rx.innerHTML = '';
+    if (!r.suggestions.length) rx.innerHTML = '<li><span>没有能直接少一层或少几个人的改法：在这两个上限下现在就是最省。</span></li>';
+    r.suggestions.forEach((sg, k) => {
+      const li = document.createElement('li');
+      li.innerHTML = '<span></span><button class="ghost" data-kind="' + sg.kind + '" data-k="' + k + '">照这样改</button>';
+      li.querySelector('span').textContent = sg.text;
+      li.querySelector('button').addEventListener('click', () => {
+        if (sg.apply.a != null) state.a = sg.apply.a;
+        if (sg.apply.b != null) state.b = sg.apply.b;
+        if (sg.apply.layers) state.layers = sg.apply.layers.slice();
+        writeInputs(); run();
+      });
+      rx.appendChild(li);
+    });
+  }
+
+  function showError(msg) {
+    const e = $('error'); e.textContent = '算不了：' + msg; e.style.display = 'block';
+  }
+
+  function run() {
+    document.querySelectorAll('input.bad').forEach((e) => e.classList.remove('bad'));
+    state.N = $('N').value.trim(); state.a = $('a').value.trim(); state.b = $('b').value.trim();
+    try {
+      const r = C.calculate(state);
+      state = clone(r.input);
+      last = r;
+      $('error').style.display = 'none';
+      $('out').style.display = '';
+      render(r);
+      save();
+    } catch (e) {
+      last = null;
+      if (e.field && $(e.field)) $(e.field).classList.add('bad');
+      showError(e.message);
+      $('out').style.display = 'none';
+    }
+  }
+
+  /* ── 导出 ── */
+  function stamp() { const d = new Date(), z = (n) => String(n).padStart(2, '0'); return d.getFullYear() + '-' + z(d.getMonth() + 1) + '-' + z(d.getDate()) + ' ' + z(d.getHours()) + ':' + z(d.getMinutes()); }
+  function download(name, blob) { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000); }
+  function wrap(g, t, w) {
+    const NOHEAD = '，。、；：！？）」』%';
+    const out = []; let line = '';
+    const toks = t.match(/[0-9][0-9,.]*|[\s\S]/g) || [];
+    for (const ch of toks) {
+      if (g.measureText(line + ch).width > w && line) {
+        if (NOHEAD.indexOf(ch) >= 0) { const l = line.slice(-1); out.push(line.slice(0, -1)); line = l + ch; } else { out.push(line); line = ch; }
+      } else line += ch;
+    }
+    if (line) out.push(line); return out;
+  }
+  function drawPNG(r) {
+    const W = 1080, H = 1350;
+    const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+    const g = cv.getContext('2d'); const F = '"PingFang SC","Microsoft YaHei",sans-serif';
+    g.fillStyle = '#f5f3ef'; g.fillRect(0, 0, W, H); g.fillStyle = '#fff'; g.fillRect(50, 50, 980, 1250);
+    g.fillStyle = '#6a625a'; g.font = '30px ' + F; g.fillText('这一层能不能砍', 100, 120);
+    g.font = '24px ' + F; g.fillText('一线 ' + C.fmt(r.input.N) + ' 人 · 一线主管最多带 ' + r.input.a + ' · 往上最多带 ' + r.input.b, 100, 162);
+    g.fillStyle = r.ok ? '#2a2724' : '#9a3b1c'; g.font = 'bold 40px ' + F;
+    let y = 230; const sl = wrap(g, r.summary, 880).slice(0, 4);
+    sl.forEach((l) => { g.fillText(l, 100, y); y += 54; });
+    /* 两个金字塔 */
+    y += 20;
+    const top = y, colW = 420;
+    function pyr(x0, counts, title, color, isOver) {
+      g.fillStyle = '#6a625a'; g.font = '24px ' + F; g.textAlign = 'center'; g.fillText(title, x0 + colW / 2, top);
+      const all = counts.concat([r.input.N]); const max = Math.max.apply(null, all);
+      const n = all.length; const bh = Math.max(8, Math.min(44, Math.floor(440 / n) - 6));
+      const order = []; for (let i = n - 2; i >= 0; i--) order.push(i); order.push(n - 1);
+      order.forEach((i, k) => {
+        const c = all[i]; const w = Math.max(54, Math.sqrt(c / max) * colW);
+        const isBase = i === n - 1;
+        const yy = top + 20 + k * (bh + 6);
+        const hh = isBase ? Math.max(bh, 30) : bh;
+        g.fillStyle = i === n - 1 ? '#ece6dd' : (isOver && isOver(i) ? '#b3402e' : color);
+        g.fillRect(x0 + (colW - w) / 2, yy, w, hh);
+        g.fillStyle = i === n - 1 ? '#6a625a' : '#fff'; g.font = (isBase ? Math.max(18, Math.min(22, bh - 6)) : Math.min(22, bh - 6)) + 'px ' + F;
+        if (bh >= 16 || i === n - 1) g.fillText(i === n - 1 ? '一线 ' + C.fmt(c) : C.fmt(c), x0 + colW / 2, yy + hh / 2 + 7);
+      });
+      g.textAlign = 'left';
+      return top + 20 + n * (bh + 6) + Math.max(0, 30 - bh);
+    }
+    const e1 = pyr(100, r.input.layers, '现在 ' + r.L + ' 层 ' + C.fmt(r.total) + ' 人', '#a8774f', (i) => r.rows[i] && r.rows[i].over);
+    const e2 = pyr(560, r.best, '最省 ' + r.bestL + ' 层 ' + C.fmt(r.bestTotal) + ' 人', '#5f8a6c');
+    y = Math.max(e1, e2) + 40;
+    g.fillStyle = '#2a2724'; g.font = '26px ' + F;
+    const room = Math.floor((1210 - y) / 38) - 1;
+    const items = r.suggestions.length ? r.suggestions.map((s) => wrap(g, '· ' + s.text, 860)) : [['· 在这两个上限下现在就是最省']];
+    let used = 0, shown = 0;
+    for (const it of items) { if (used + it.length > room) break; it.forEach((l) => { g.fillText(l, 100, y); y += 38; }); used += it.length; shown++; }
+    if (shown < items.length) { g.fillStyle = '#857c73'; g.fillText('还有 ' + (items.length - shown) + ' 条改法，见 CSV / Markdown', 100, y); }
+    g.fillStyle = '#857c73'; g.font = '20px ' + F;
+    g.fillText('只按人数与带人上限算的下限；上限是自定的设计选择，不是行业标准。', 100, 1255);
+    return cv;
+  }
+
+  function init() {
+    PRESETS.forEach((p) => {
+      const b = document.createElement('button'); b.className = 'ghost'; b.textContent = p[0];
+      b.addEventListener('click', () => { state = clone(p[1]); writeInputs(); run(); });
+      $('presets').appendChild(b);
+    });
+    ['N', 'a', 'b'].forEach((id) => $(id).addEventListener('input', run));
+    $('addLayer').addEventListener('click', () => {
+      if (state.layers.length >= C.LIM.layers) { showError('最多填 ' + C.LIM.layers + ' 层'); return; }
+      /* 在最顶上下面加一层，人数先填 2 */
+      state.layers.splice(state.layers.length - 1, 0, 2); buildLayerRows(); run();
+    });
+    $('reset').addEventListener('click', () => { state = clone(DEFAULT); writeInputs(); run(); });
+    $('dlCSV').addEventListener('click', () => { if (last) download('这一层能不能砍.csv', new Blob(['\ufeff' + C.toCSV(last, stamp())], { type: 'text/csv;charset=utf-8' })); });
+    $('dlMD').addEventListener('click', () => { if (last) download('这一层能不能砍.md', new Blob([C.toMD(last, stamp())], { type: 'text/markdown;charset=utf-8' })); });
+    $('dlJSON').addEventListener('click', () => { if (last) download('这一层能不能砍-备份.json', new Blob([JSON.stringify({ app: '这一层能不能砍', version: 1, savedAt: stamp(), input: last.input, result: { best: last.best, bestTotal: last.bestTotal, total: last.total, summary: last.summary, facts: last.facts, suggestions: last.suggestions.map((s) => s.text) } }, null, 2)], { type: 'application/json' })); });
+    $('dlPNG').addEventListener('click', () => { if (last) drawPNG(last).toBlob((b) => download('这一层能不能砍-1080x1350.png', b), 'image/png'); });
+    state = load() || clone(DEFAULT);
+    writeInputs(); run();
+    window.__cut = { last: () => last, state: () => state };
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
+})();
+
+  </script>
+</body>
+</html>
